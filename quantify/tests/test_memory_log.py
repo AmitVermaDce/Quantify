@@ -10,6 +10,7 @@ from quantify.graph.reflection import Reflector
 from quantify.graph.trading_graph import TradingAgentsGraph
 from quantify.graph.propagation import Propagator
 from quantify.agents.managers.portfolio_manager import create_portfolio_manager
+from quantify.graph.outcome_resolver import OutcomeResolver
 
 _SEP = TradingMemoryLog._SEPARATOR
 
@@ -483,114 +484,109 @@ class TestDeferredReflection:
         assert "-5.0%" in human_content
         assert "Exit position immediately." in human_content
 
-    # TradingAgentsGraph._fetch_returns
+    # OutcomeResolver.fetch_returns
 
     def test_fetch_returns_valid_ticker(self):
         stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
         spy_prices   = [400.0, 402.0, 404.0, 403.0, 405.0, 406.0]
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
+        resolver = OutcomeResolver({"benchmark_map": {"": "SPY"}})
         with patch("yfinance.Ticker") as mock_ticker_cls:
             def _make_ticker(sym):
                 m = MagicMock()
                 m.history.return_value = _price_df(spy_prices if sym == "SPY" else stock_prices)
                 return m
             mock_ticker_cls.side_effect = _make_ticker
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
+            raw, alpha, days = resolver.fetch_returns("NVDA", "2026-01-05")
         assert raw is not None and alpha is not None and days is not None
         assert isinstance(raw, float) and isinstance(alpha, float) and isinstance(days, int)
         assert days == 5
 
     def test_fetch_returns_too_recent(self):
         """Only 1 data point available → returns (None, None, None), no crash."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
+        resolver = OutcomeResolver({"benchmark_map": {"": "SPY"}})
         with patch("yfinance.Ticker") as mock_ticker_cls:
             m = MagicMock()
             m.history.return_value = _price_df([100.0])
             mock_ticker_cls.return_value = m
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-04-19")
+            raw, alpha, days = resolver.fetch_returns("NVDA", "2026-04-19")
         assert raw is None and alpha is None and days is None
 
     def test_fetch_returns_delisted(self):
         """Empty DataFrame → returns (None, None, None), no crash."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
+        resolver = OutcomeResolver({"benchmark_map": {"": "SPY"}})
         with patch("yfinance.Ticker") as mock_ticker_cls:
             m = MagicMock()
             m.history.return_value = pd.DataFrame({"Close": []})
             mock_ticker_cls.return_value = m
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "XXXXXFAKE", "2026-01-10")
+            raw, alpha, days = resolver.fetch_returns("XXXXXFAKE", "2026-01-10")
         assert raw is None and alpha is None and days is None
 
     def test_fetch_returns_spy_shorter_than_stock(self):
         """SPY having fewer rows than the stock must not raise IndexError."""
         stock_prices = [100.0, 102.0, 104.0, 103.0, 105.0, 106.0]
         spy_prices   = [400.0, 402.0, 403.0]
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
+        resolver = OutcomeResolver({"benchmark_map": {"": "SPY"}})
         with patch("yfinance.Ticker") as mock_ticker_cls:
             def _make_ticker(sym):
                 m = MagicMock()
                 m.history.return_value = _price_df(spy_prices if sym == "SPY" else stock_prices)
                 return m
             mock_ticker_cls.side_effect = _make_ticker
-            raw, alpha, days = TradingAgentsGraph._fetch_returns(mock_graph, "NVDA", "2026-01-05")
+            raw, alpha, days = resolver.fetch_returns("NVDA", "2026-01-05")
         assert raw is not None and alpha is not None and days is not None
         assert days == 2
 
-    # TradingAgentsGraph._resolve_benchmark — picks index for alpha calc
+    # OutcomeResolver.resolve_benchmark — picks index for alpha calc
 
     def test_resolve_benchmark_explicit_override(self):
         """config['benchmark_ticker'] wins for every ticker."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.config = {
+        resolver = OutcomeResolver({
             "benchmark_ticker": "QQQ",
             "benchmark_map": {"": "SPY", ".T": "^N225"},
-        }
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "7203.T") == "QQQ"
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "NVDA") == "QQQ"
+        })
+        assert resolver.resolve_benchmark("7203.T") == "QQQ"
+        assert resolver.resolve_benchmark("NVDA") == "QQQ"
 
     def test_resolve_benchmark_suffix_map(self):
         """Known suffixes route to their regional index."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.config = {
+        resolver = OutcomeResolver({
             "benchmark_ticker": None,
             "benchmark_map": {
                 ".T": "^N225", ".HK": "^HSI", ".NS": "^NSEI",
                 ".L": "^FTSE", ".TO": "^GSPTSE", ".AX": "^AXJO",
                 ".BO": "^BSESN", "": "SPY",
             },
-        }
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "7203.T") == "^N225"
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "0700.HK") == "^HSI"
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "RELIANCE.NS") == "^NSEI"
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "AZN.L") == "^FTSE"
+        })
+        assert resolver.resolve_benchmark("7203.T") == "^N225"
+        assert resolver.resolve_benchmark("0700.HK") == "^HSI"
+        assert resolver.resolve_benchmark("RELIANCE.NS") == "^NSEI"
+        assert resolver.resolve_benchmark("AZN.L") == "^FTSE"
 
     def test_resolve_benchmark_us_ticker_defaults_to_spy(self):
         """US tickers (no dotted suffix) take the empty-suffix entry."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.config = {
+        resolver = OutcomeResolver({
             "benchmark_ticker": None,
             "benchmark_map": {"": "SPY", ".T": "^N225"},
-        }
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "NVDA") == "SPY"
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "AAPL") == "SPY"
+        })
+        assert resolver.resolve_benchmark("NVDA") == "SPY"
+        assert resolver.resolve_benchmark("AAPL") == "SPY"
 
     def test_resolve_benchmark_unknown_suffix_falls_back(self):
         """Unrecognised suffix (BRK.B, FAKE.XX) falls back to SPY."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.config = {
+        resolver = OutcomeResolver({
             "benchmark_ticker": None,
             "benchmark_map": {"": "SPY", ".T": "^N225"},
-        }
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "FAKE.XX") == "SPY"
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "BRK.B") == "SPY"
+        })
+        assert resolver.resolve_benchmark("FAKE.XX") == "SPY"
+        assert resolver.resolve_benchmark("BRK.B") == "SPY"
 
     def test_resolve_benchmark_case_insensitive(self):
         """Suffix matching is case-insensitive so 7203.t resolves like 7203.T."""
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.config = {
+        resolver = OutcomeResolver({
             "benchmark_ticker": None,
             "benchmark_map": {".T": "^N225", "": "SPY"},
-        }
-        assert TradingAgentsGraph._resolve_benchmark(mock_graph, "7203.t") == "^N225"
+        })
+        assert resolver.resolve_benchmark("7203.t") == "^N225"
 
     def test_reflector_includes_benchmark_in_label(self):
         """benchmark_name appears in the prompt label, not 'SPY' hardcoded."""
@@ -622,17 +618,17 @@ class TestDeferredReflection:
         human_content = next(content for role, content in messages if role == "human")
         assert "Alpha vs SPY:" in human_content
 
-    # TradingAgentsGraph._resolve_pending_entries
+    # OutcomeResolver.resolve_pending_entries
 
     def test_resolve_skips_other_tickers(self, tmp_path):
         """Pending AAPL entry is not resolved when the run is for NVDA."""
         log = make_log(tmp_path)
         log.store_decision("AAPL", "2026-01-10", DECISION_BUY)
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.memory_log = log
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
-        mock_graph._fetch_returns.assert_not_called()
+        resolver = OutcomeResolver({"benchmark_map": {"": "SPY"}})
+        resolver.fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
+        reflector = MagicMock()
+        resolver.resolve_pending_entries("NVDA", log, reflector)
+        resolver.fetch_returns.assert_not_called()
         assert len(log.get_pending_entries()) == 1
 
     def test_resolve_marks_entry_completed(self, tmp_path):
@@ -641,11 +637,9 @@ class TestDeferredReflection:
         log.store_decision("NVDA", "2026-01-05", DECISION_BUY)
         mock_reflector = MagicMock()
         mock_reflector.reflect_on_final_decision.return_value = "Momentum confirmed."
-        mock_graph = MagicMock(spec=TradingAgentsGraph)
-        mock_graph.memory_log = log
-        mock_graph.reflector = mock_reflector
-        mock_graph._fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
-        TradingAgentsGraph._resolve_pending_entries(mock_graph, "NVDA")
+        resolver = OutcomeResolver({"benchmark_map": {"": "SPY"}})
+        resolver.fetch_returns = MagicMock(return_value=(0.05, 0.02, 5))
+        resolver.resolve_pending_entries("NVDA", log, mock_reflector)
         assert log.get_pending_entries() == []
         entries = log.load_entries()
         assert len(entries) == 1
@@ -750,7 +744,7 @@ class TestPortfolioManagerInjection:
         assert "Overvalued correction." in result
         assert "Exit position immediately." not in result
 
-    def test_n_same_limit_respected(self, tmp_path):
+    def test_past_context_n_same_limit_respected(self, tmp_path):
         """More than 5 same-ticker completed entries → only 5 injected."""
         log = make_log(tmp_path)
         for i in range(7):
@@ -759,7 +753,7 @@ class TestPortfolioManagerInjection:
         lessons_present = sum(1 for i in range(7) if f"Lesson {i}." in result)
         assert lessons_present == 5
 
-    def test_n_cross_limit_respected(self, tmp_path):
+    def test_past_context_n_cross_limit_respected(self, tmp_path):
         """More than 3 cross-ticker completed entries → only 3 injected."""
         log = make_log(tmp_path)
         tickers = ["AAPL", "MSFT", "TSLA", "AMZN", "GOOG"]
@@ -811,8 +805,9 @@ class TestLegacyRemoval:
         """create_portfolio_manager accepts only llm; passing memory= raises TypeError."""
         mock_llm = MagicMock()
         create_portfolio_manager(mock_llm)
+        kwargs = {"memory": MagicMock()}
         with pytest.raises(TypeError):
-            create_portfolio_manager(mock_llm, memory=MagicMock())
+            create_portfolio_manager(mock_llm, **kwargs)
 
     def test_full_pipeline_no_regression(self, tmp_path):
         """propagate() completes and stores the decision after the redesign."""
