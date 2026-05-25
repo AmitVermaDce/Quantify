@@ -227,12 +227,34 @@ export GOOGLE_API_KEY=...
 
 ## Data Sources
 
-| Source | Data Type | API Key Required |
-|--------|-----------|-----------------|
-| Yahoo Finance | OHLCV, Fundamentals, News | No |
-| Alpha Vantage | OHLCV, Indicators | Yes (free tier) |
-| StockTwits | Social Sentiment | No |
-| Reddit (r/wallstreetbets) | Social Sentiment | No |
+### External API Calls
+
+Quantify fetches real-time data from multiple external sources:
+
+| Source | Data Type | API Key Required | Rate Limit |
+|--------|-----------|-----------------|------------|
+| **Yahoo Finance** | OHLCV, Fundamentals, Financial Statements, Insider Transactions, News | No | Unofficial |
+| **Alpha Vantage** | OHLCV, Technical Indicators, Fundamentals, News | Yes (free tier) | 5/min, 500/day |
+| **StockTwits** | Social Sentiment (Bullish/Bearish posts) | No | ~10/min |
+| **Reddit** | Social Sentiment (r/wallstreetbets, r/stocks, r/investing) | No | ~10/min |
+| **Ollama** | LLM Inference & Embeddings (local) | No (runs locally) | N/A |
+
+### Default Configuration
+
+By default, **yfinance** is used for all market data. Alpha Vantage is available as an alternative:
+
+```bash
+# In .env file, switch data vendors:
+TRADINGAGENTS_DATA_VENDORS_CORE_STOCK_APIS=alpha_vantage
+TRADINGAGENTS_DATA_VENDORS_TECHNICAL_INDICATORS=alpha_vantage
+TRADINGAGENTS_DATA_VENDORS_FUNDAMENTAL_DATA=alpha_vantage
+TRADINGAGENTS_DATA_VENDORS_NEWS_DATA=alpha_vantage
+
+# Set your Alpha Vantage API key:
+ALPHA_VANTAGE_API_KEY=your_key_here
+```
+
+Get a free Alpha Vantage API key at: https://www.alphavantage.co/support/#api-key
 
 ## Output
 

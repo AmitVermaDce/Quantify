@@ -17,6 +17,7 @@ _ENV_OVERRIDES = {
     "TRADINGAGENTS_MAX_RISK_ROUNDS":      "max_risk_discuss_rounds",
     "TRADINGAGENTS_CHECKPOINT_ENABLED":   "checkpoint_enabled",
     "TRADINGAGENTS_BENCHMARK_TICKER":     "benchmark_ticker",
+    "ALPHA_VANTAGE_API_KEY":              "alpha_vantage_api_key",
 }
 
 
@@ -90,6 +91,9 @@ DEFAULT_CONFIG = _apply_env_overrides({
         "ECB Bank of England BOJ central bank policy",
         "oil commodities supply chain energy",
     ],
+    # Alpha Vantage API key (can be set via ALPHA_VANTAGE_API_KEY env var)
+    "alpha_vantage_api_key": None,
+
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {
