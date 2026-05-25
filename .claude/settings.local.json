@@ -4,7 +4,8 @@
       "Bash(python3 scripts/extract_pdf.py --input-dir \"./data/Trading_Books\" --output-dir \"./data/extracted_text\" --limit 2)",
       "Bash(curl -s http://localhost:11434/api/tags)",
       "Bash(python3 *)",
-      "Bash(.venv/bin/python *)"
+      "Bash(.venv/bin/python *)",
+      "Bash(python load_all_pdfs.py --extract-text)"
     ]
   }
 }

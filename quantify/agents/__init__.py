@@ -20,6 +20,7 @@ from .managers.research_manager import create_research_manager
 from .managers.portfolio_manager import create_portfolio_manager
 
 from .trader.trader import create_trader
+from .knowledge_mixin import KnowledgeMixin, get_knowledge_context
 
 __all__ = [
     "AgentState",

@@ -20,6 +20,7 @@ See: https://github.com/TauricResearch/TradingAgents/issues/557
 """
 
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from quantify.agents.utils.agent_utils import (
@@ -29,6 +30,33 @@ from quantify.agents.utils.agent_utils import (
 )
 from quantify.dataflows.reddit import fetch_reddit_posts
 from quantify.dataflows.stocktwits import fetch_stocktwits_messages
+
+# Lazy-load knowledge service
+_kb_service = None
+
+def _get_kb_service():
+    """Lazy-load knowledge service for auto-injection."""
+    global _kb_service
+    if _kb_service is not None:
+        return _kb_service
+
+    try:
+        current_file = Path(__file__).resolve()
+        # Go up to project root: analysts/.. = agents, agents/.. = quantify, quantify/.. = project root
+        kb_path = current_file.parent.parent.parent.parent / "knowledge_base"
+        if kb_path.exists() and (kb_path / "service.py").exists():
+            import sys
+            if str(kb_path) not in sys.path:
+                sys.path.insert(0, str(kb_path))
+            from service import KnowledgeService
+            _kb_service = KnowledgeService(
+                index_path=str(kb_path / "data" / "knowledge_base"),
+                auto_load=True,
+            )
+    except Exception:
+        _kb_service = None
+
+    return _kb_service
 
 
 def _seven_days_back(trade_date: str) -> str:
@@ -87,6 +115,17 @@ def create_sentiment_analyst(llm):
         # call produces the report directly.
         chain = prompt | llm
         result = chain.invoke(state["messages"])
+
+        # Auto-inject knowledge from knowledge base
+        kb = _get_kb_service()
+        if kb:
+            ticker = state.get("ticker", state.get("company_of_interest", "market"))
+            try:
+                context = kb.get_context(f"{ticker} market sentiment", k=2)
+                if context and len(context.strip()) > 0:
+                    result.content += f"\n\n== Relevant Financial Knowledge ==\n{context}\n== End Knowledge =="
+            except Exception:
+                pass  # Silently fail - knowledge is optional
 
         return {
             "messages": [result],

@@ -1,0 +1,21 @@
+{
+  "llm": {
+    "base_url": "http://localhost:11434",
+    "model": "qwen3.5:cloud",
+    "embedding_model": "mxbai-embed-large",
+    "embedding_dimension": 1024
+  },
+  "database": {
+    "url": "postgresql://localhost:5432/trading_knowledge"
+  },
+  "extraction": {
+    "chunk_size": 3000,
+    "chunk_overlap": 300,
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5
+  },
+  "logging": {
+    "level": "INFO",
+    "format": "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+  }
+}

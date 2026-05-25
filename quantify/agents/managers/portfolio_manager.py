@@ -6,6 +6,9 @@ back to markdown for storage in ``final_trade_decision`` so memory log,
 CLI display, and saved reports continue to consume the same shape they do
 today.  When a provider does not expose structured output, the agent falls
 back gracefully to free-text generation.
+
+Knowledge Base Integration:
+    Automatically injects relevant knowledge from financial books into prompts.
 """
 
 from __future__ import annotations
@@ -19,6 +22,33 @@ from quantify.agents.utils.structured import (
     bind_structured,
     invoke_structured_or_freetext,
 )
+
+# Lazy-load knowledge service
+_kb_service_pm = None
+
+def _get_kb_service_pm():
+    """Lazy-load knowledge service for auto-injection."""
+    global _kb_service_pm
+    if _kb_service_pm is not None:
+        return _kb_service_pm
+
+    try:
+        from pathlib import Path
+        current_file = Path(__file__).resolve()
+        kb_path = current_file.parent.parent.parent.parent / "knowledge_base"
+        if kb_path.exists() and (kb_path / "service.py").exists():
+            import sys
+            if str(kb_path) not in sys.path:
+                sys.path.insert(0, str(kb_path))
+            from service import KnowledgeService
+            _kb_service_pm = KnowledgeService(
+                index_path=str(kb_path / "data" / "knowledge_base"),
+                auto_load=True,
+            )
+    except Exception:
+        _kb_service_pm = None
+
+    return _kb_service_pm
 
 
 def create_portfolio_manager(llm):
@@ -62,6 +92,17 @@ def create_portfolio_manager(llm):
 ---
 
 Be decisive and ground every conclusion in specific evidence from the analysts.{get_language_instruction()}"""
+
+        # Auto-inject knowledge from knowledge base
+        kb = _get_kb_service_pm()
+        if kb:
+            ticker = state.get("ticker", state.get("company_of_interest", "market"))
+            try:
+                context = kb.get_context(f"{ticker} investment analysis", k=3)
+                if context and len(context.strip()) > 0:
+                    prompt += f"\n\n== Relevant Financial Knowledge ==\nUse the following knowledge from financial books and research to inform your decision:\n\n{context}\n\n== End Knowledge ==\n"
+            except Exception:
+                pass  # Silently fail - knowledge is optional
 
         final_trade_decision = invoke_structured_or_freetext(
             structured_llm,

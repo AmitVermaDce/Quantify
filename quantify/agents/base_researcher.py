@@ -8,9 +8,40 @@ Both bull and bear researchers follow the same pattern:
 5. Return state update
 
 This base class handles steps 1, 3, 4, 5. Subclasses provide 2.
+
+Knowledge Base Integration:
+    Automatically injects relevant knowledge from financial books into prompts.
+    Enabled by default. Set USE_KNOWLEDGE = False in subclass to disable.
 """
 
 from typing import Dict
+
+# Lazy-load knowledge service
+_kb_service = None
+
+def _get_kb_service():
+    """Lazy-load knowledge service for auto-injection."""
+    global _kb_service
+    if _kb_service is not None:
+        return _kb_service
+
+    try:
+        from pathlib import Path
+        current_file = Path(__file__).resolve()
+        kb_path = current_file.parent.parent.parent / "knowledge_base"
+        if kb_path.exists() and (kb_path / "service.py").exists():
+            import sys
+            if str(kb_path) not in sys.path:
+                sys.path.insert(0, str(kb_path))
+            from service import KnowledgeService
+            _kb_service = KnowledgeService(
+                index_path=str(kb_path / "data" / "knowledge_base"),
+                auto_load=True,
+            )
+    except Exception:
+        _kb_service = None
+
+    return _kb_service
 
 
 class BaseResearcher:
@@ -23,6 +54,11 @@ class BaseResearcher:
     OPPONENT_LABEL: str = ""  # e.g., "bear" for Bull Analyst
     OPPONENT_HISTORY_KEY: str = ""  # e.g., "bear_history"
     PROMPT_TEMPLATE: str = ""
+
+    # Knowledge base integration
+    USE_KNOWLEDGE: bool = True
+    KNOWLEDGE_QUERY_TEMPLATE: str = "{ticker} investment analysis"
+    KNOWLEDGE_K: int = 2
 
     def __init__(self, llm):
         self.llm = llm
@@ -48,7 +84,7 @@ class BaseResearcher:
         opponent_label = self.OPPONENT_LABEL.capitalize()
         opponent_arg = f"Last {opponent_label} argument" if self.OPPONENT_LABEL else "Previous arguments"
 
-        return self.PROMPT_TEMPLATE.format(
+        prompt = self.PROMPT_TEMPLATE.format(
             target_label=target_label,
             fundamentals_label=fundamentals_label,
             market_research_report=market_research_report,
@@ -59,6 +95,21 @@ class BaseResearcher:
             opponent_arg=opponent_arg,
             current_response=current_response,
         )
+
+        # Auto-inject knowledge if enabled
+        if self.USE_KNOWLEDGE:
+            kb = _get_kb_service()
+            if kb:
+                ticker = state.get("ticker", state.get("company_of_interest", "market"))
+                query = self.KNOWLEDGE_QUERY_TEMPLATE.format(ticker=ticker)
+                try:
+                    context = kb.get_context(query, k=self.KNOWLEDGE_K)
+                    if context and len(context.strip()) > 0:
+                        prompt += f"\n\n== Relevant Financial Knowledge ==\nUse the following knowledge from financial books and research to inform your analysis:\n\n{context}\n\n== End Knowledge ==\n"
+                except Exception:
+                    pass  # Silently fail - knowledge is optional enhancement
+
+        return prompt
 
     def _update_state(self, state: Dict, argument: str) -> Dict:
         """Update debate state with new argument."""
