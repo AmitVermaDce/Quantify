@@ -151,13 +151,18 @@ Quantify/
 │   ├── turbovec_retriever.py  # TurboVec 4-bit quantized retrieval
 │   ├── build_knowledge_base.py  # PDF→chunks→embeddings pipeline
 │   ├── knowledge_api_simple.py  # REST API server
+│   ├── market_data/       # Source PDFs (single location for all books)
+│   │   ├── Investing_Books/
+│   │   └── Psychological_Books/
 │   ├── tests/             # Test suite (33 passing tests)
 │   └── data/
+│       ├── extracted_text/    # Extracted text from PDFs
 │       └── knowledge_base/    # Indexed knowledge (18,443 chunks)
 │           ├── index.tq       # TurboVec index (~10MB)
 │           ├── documents.json # Document metadata
 │           └── config.json    # Configuration
-├── test_knowledge_integration.py  # End-to-end integration test
+├── quantify/tests/
+│   └── test_knowledge_integration.py  # End-to-end integration test
 ├── .env                   # Environment variables (create from .env.example)
 ├── .gitignore
 ├── pyproject.toml         # Project metadata and dependencies

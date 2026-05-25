@@ -9,7 +9,7 @@ Complete pipeline:
 4. Build TurboVec index for RAG retrieval
 
 Usage:
-    python build_knowledge_base.py --market-data-dir ../market_data/ --output ./data/knowledge_base/
+    python build_knowledge_base.py --market-data-dir ./market_data/ --output ./data/knowledge_base/
 """
 
 import os

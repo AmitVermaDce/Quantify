@@ -4,22 +4,25 @@
 
 ```
 Quantify/
-├── knowledge_base/          # Knowledge base code and data (root level)
+├── knowledge_base/          # Knowledge base code, data, and source PDFs
 │   ├── build_knowledge_base.py   # Build/rebuild knowledge base
 │   ├── service.py                # Main API for agents
 │   ├── turbovec_retriever.py     # TurboVec integration
 │   ├── knowledge_api_simple.py   # REST API server
-│   ├── dots_ocr_parser.py        # Advanced PDF parser (optional)
-│   └── data/
-│       └── knowledge_base/       # TurboVec index (18K+ documents)
+│   ├── market_data/              # Source PDFs (single location)
+│   │   ├── Investing_Books/
+│   │   └── Psychological_Books/
+│   ├── data/
+│   │   ├── extracted_text/       # Extracted text from PDFs
+│   │   └── knowledge_base/       # TurboVec index (18K+ documents)
+│   └── tests/                    # Test suite
 │
 ├── quantify/
 │   └── agents/
 │       └── knowledge_mixin.py    # Agent integration mixin
 │
-└── quantify/market_data/        # Source PDFs
-    ├── Investing_Books/
-    └── Psychological_Books/
+└── quantify/tests/
+    └── test_knowledge_integration.py  # End-to-end integration test
 ```
 
 ## Quick Start
@@ -29,7 +32,7 @@ Quantify/
 ```bash
 cd knowledge_base
 python build_knowledge_base.py \
-  --market-data-dir ../quantify/market_data/ \
+  --market-data-dir ./market_data/ \
   --output ./data/knowledge_base
 ```
 
@@ -167,11 +170,11 @@ kb.search("loss aversion", category="Psychological_Books")
 
 ## Adding New PDFs
 
-When you add new PDFs to `quantify/market_data/`:
+When you add new PDFs:
 
 1. **Place PDF in correct category:**
-   - `quantify/market_data/Investing_Books/` for investment books
-   - `quantify/market_data/Psychological_Books/` for psychology books
+   - `knowledge_base/market_data/Investing_Books/` for investment books
+   - `knowledge_base/market_data/Psychological_Books/` for psychology books
 
 2. **Run incremental update:**
    ```bash
@@ -179,7 +182,7 @@ When you add new PDFs to `quantify/market_data/`:
    python -c "
    from service import KnowledgeService
    kb = KnowledgeService()
-   kb.add_pdfs(['../quantify/market_data/Investing_Books/new_book.pdf'])
+   kb.add_pdfs(['market_data/Investing_Books/new_book.pdf'])
    "
    ```
 

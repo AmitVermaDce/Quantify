@@ -104,6 +104,7 @@ The knowledge base is integrated at **every agent level**, automatically injecti
 │  │   │  service.py        - KnowledgeService API                    │  │   │
 │  │   │  turbovec_retriever  - 4-bit quantized vector search         │  │   │
 │  │   │  build_knowledge_base.py - PDF→chunks→embeddings pipeline    │  │   │
+│  │   │  market_data/        - Source PDFs (single location)         │  │   │
 │  │   └──────────────────────────────────────────────────────────────┘  │   │
 │  │   ┌──────────────────────────────────────────────────────────────┐  │   │
 │  │   │  data/knowledge_base/                                        │  │   │
@@ -184,10 +185,15 @@ Quantify/
 │   ├── service.py               # KnowledgeService API
 │   ├── turbovec_retriever.py    # TurboVec retrieval
 │   ├── build_knowledge_base.py  # Build pipeline
+│   ├── market_data/             # Source PDFs (Investing_Books, Psychological_Books)
 │   ├── tests/                   # 33 passing tests
-│   └── data/knowledge_base/     # Indexed knowledge
+│   ├── data/
+│   │   ├── extracted_text/      # Extracted text from PDFs
+│   │   └── knowledge_base/      # Indexed knowledge
+│   └── USAGE.md                 # Usage documentation
 │
-├── test_knowledge_integration.py  # E2E test
+├── quantify/tests/
+│   └── test_knowledge_integration.py  # E2E test
 └── ...
 ```
 

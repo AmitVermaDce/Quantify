@@ -52,8 +52,7 @@ dmypy.json
 
 # ruff
 .ruff_cache/
-quantify/market_data/Trading_Books/*.pdf
-quantify/market_data/Psychological_Books/*.pdf
+knowledge_base/market_data/**/*.pdf
 
 # reports
 reports/
