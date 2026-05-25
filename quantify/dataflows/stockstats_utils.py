@@ -34,6 +34,24 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
 
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps."""
+    if data.empty:
+        return data
+
+    # Handle different date column names from yfinance
+    date_col = None
+    for col in ["Date", "datetime", "time"]:
+        if col in data.columns:
+            date_col = col
+            break
+
+    if date_col is None:
+        logger.warning(f"No date column found in DataFrame. Columns: {list(data.columns)}")
+        return data
+
+    # Rename to "Date" for consistency
+    if date_col != "Date":
+        data = data.rename(columns={date_col: "Date"})
+
     data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
     data = data.dropna(subset=["Date"])
 

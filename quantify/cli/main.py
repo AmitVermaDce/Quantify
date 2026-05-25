@@ -492,19 +492,23 @@ def get_user_selections():
 
     # Create welcome box content
     welcome_content = f"{welcome_ascii}\n"
-    welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]"
+    welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
+    welcome_content += "[bold]Workflow Steps:[/bold]\n"
+    welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
+    welcome_content += (
+        "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
+    )
 
     # Create and center the welcome box
     welcome_box = Panel(
         welcome_content,
         border_style="green",
-        padding=(1, 2),
+        padding=(1, 3),
         title="Welcome to TradingAgents",
         subtitle="Multi-Agents LLM Financial Trading Framework",
     )
     console.print(Align.center(welcome_box))
     console.print()
-    console.print()  # Add vertical space before announcements
 
     # Fetch and display announcements (silent on failure)
     announcements = fetch_announcements()
