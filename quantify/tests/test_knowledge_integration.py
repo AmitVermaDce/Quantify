@@ -9,8 +9,9 @@ This script tests the complete pipeline:
 4. Verification that knowledge appears in reports
 
 Usage:
-    python test_knowledge_integration.py --ticker AAPL --date 2024-01-15
-    python test_knowledge_integration.py --ticker AAPL --date 2024-01-15 --no-run  # Just test KB
+    python -m pytest quantify/tests/test_knowledge_integration.py::test_knowledge_base_loading -v
+    python -m pytest quantify/tests/test_knowledge_integration.py::test_knowledge_injection -v
+    python quantify/tests/test_knowledge_integration.py --ticker AAPL --date 2024-01-15 --test 3
 """
 
 import sys
@@ -19,8 +20,8 @@ from pathlib import Path
 from typing import Optional
 import argparse
 
-# Add project root to path
-PROJECT_ROOT = Path(__file__).parent
+# Add project root to path (quantify/tests/.. = quantify, .. = project root)
+PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from rich.console import Console
@@ -385,6 +386,19 @@ def main():
     else:
         console.print("\n[yellow]No tests run[/yellow]")
         return 0
+
+
+# =============================================================================
+# Pytest-compatible test functions
+# =============================================================================
+
+def test_knowledge_base_loading():
+    """Pytest-compatible test for KB loading."""
+    assert test_knowledge_base_loading() is True
+
+def test_knowledge_injection():
+    """Pytest-compatible test for KB injection."""
+    assert test_knowledge_injection() is True
 
 
 if __name__ == "__main__":
