@@ -53,6 +53,12 @@ dmypy.json
 # ruff
 .ruff_cache/
 quantify/market_data/Trading_Books/*.pdf
+quantify/market_data/Psychological_Books/*.pdf
 
 # reports
 reports/
+
+# Knowledge base (can be regenerated from PDFs)
+knowledge_base/data/extracted_text/
+knowledge_base/data/knowledge_base/
+knowledge_base/data/turbovec_index/

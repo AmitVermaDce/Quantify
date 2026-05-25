@@ -11,6 +11,7 @@ A production-ready trading analysis system combining **multi-agent AI reasoning*
 - **Debate-Style Reasoning** - Bull and Bear researchers debate investment thesis before final decision
 - **Risk Management** - Three risk perspectives (Aggressive, Conservative, Neutral) evaluate position sizing
 - **Portfolio Manager** - Final synthesis produces actionable trade recommendations with confidence ratings
+- **Knowledge-Enhanced Decisions** - RAG-powered knowledge base injects insights from 22+ financial books into every agent's analysis
 - **Multiple Data Sources** - Yahoo Finance, Alpha Vantage, StockTwits, Reddit sentiment
 - **Checkpoint/Resume** - Long-running analyses can resume from crashes
 - **Local LLM Support** - Run with Ollama for privacy and cost savings
@@ -116,30 +117,47 @@ Quantify/
 ├── quantify/              # Main Python package
 │   ├── __init__.py
 │   ├── agents/            # Trading agent implementations
-│   │   ├── base_analyst.py      # Base class for analyst nodes
-│   │   ├── base_researcher.py   # Base class for bull/bear researchers
-│   │   ├── base_debator.py      # Base class for risk debators
-│   │   └── analysts/            # Market, news, fundamentals, sentiment
+│   │   ├── base_analyst.py      # Base class for analyst nodes (with KB injection)
+│   │   ├── base_researcher.py   # Base class for bull/bear researchers (with KB)
+│   │   ├── base_debator.py      # Base class for risk debators (with KB)
+│   │   ├── knowledge_mixin.py   # Knowledge base integration mixin
+│   │   ├── analysts/            # Market, news, fundamentals, sentiment analysts
+│   │   ├── researchers/         # Bull and Bear researchers
+│   │   ├── risk_mgmt/           # Aggressive, Conservative, Neutral debators
+│   │   ├── managers/            # Research Manager, Portfolio Manager
+│   │   └── trader/              # Trader agent
 │   ├── cli/               # Command-line interface
 │   │   └── main.py        # Main CLI entry point
 │   ├── dataflows/         # Market data vendors
 │   │   ├── y_finance.py   # Yahoo Finance (primary)
 │   │   ├── alpha_vantage.py  # Alpha Vantage (fallback)
 │   │   ├── yfinance_news.py  # News from Yahoo Finance
-│   │   └── stocktwits.py  # StockTwits sentiment
+│   │   ├── stocktwits.py  # StockTwits sentiment
+│   │   └── reddit.py      # Reddit sentiment (r/wallstreetbets)
 │   ├── graph/             # LangGraph workflow
 │   │   ├── trading_graph.py   # Main graph orchestration
 │   │   ├── setup.py       # Graph setup
 │   │   ├── propagation.py # State propagation
-│   │   └── checkpointer.py# Checkpoint management
-│   ├── knowledge/         # RAG knowledge base
-│   │   ├── knowledge_api.py     # FastAPI REST service
-│   │   └── knowledge_client.py  # RAG client for agents
+│   │   ├── checkpointer.py# Checkpoint management
+│   │   └── analyst_execution.py  # Analyst execution planning
 │   ├── llm_clients/       # LLM provider clients
 │   │   ├── openai_client.py
 │   │   ├── anthropic_client.py
-│   │   └── google_client.py
+│   │   ├── google_client.py
+│   │   └── ollama_client.py
 │   └── default_config.py  # Default configuration
+├── knowledge_base/        # RAG Knowledge Base (separate module)
+│   ├── service.py         # KnowledgeService - main API for agents
+│   ├── turbovec_retriever.py  # TurboVec 4-bit quantized retrieval
+│   ├── build_knowledge_base.py  # PDF→chunks→embeddings pipeline
+│   ├── knowledge_api_simple.py  # REST API server
+│   ├── tests/             # Test suite (33 passing tests)
+│   └── data/
+│       └── knowledge_base/    # Indexed knowledge (18,443 chunks)
+│           ├── index.tq       # TurboVec index (~10MB)
+│           ├── documents.json # Document metadata
+│           └── config.json    # Configuration
+├── test_knowledge_integration.py  # End-to-end integration test
 ├── .env                   # Environment variables (create from .env.example)
 ├── .gitignore
 ├── pyproject.toml         # Project metadata and dependencies
@@ -225,6 +243,48 @@ After analysis, Quantify produces:
 
 Reports are saved to `~/.tradingagents/logs/<TICKER>/<DATE>/reports/`
 
+## Knowledge Base
+
+Quantify includes a RAG-powered knowledge base with insights from 22+ financial books including:
+
+- **Value Investing**: Benjamin Graham (Intelligent Investor, Security Analysis), Seth Klarman (Margin of Safety)
+- **Quality Investing**: Philip Fisher, Bruce Greenwald, Joel Greenblatt
+- **Trading Psychology**: Daniel Kahneman, Mark Douglas, Tom Hougaard
+- **Market Psychology**: Gustave Le Bon, Robert Cialdini, James Surowiecki
+
+### Building the Knowledge Base
+
+```bash
+cd knowledge_base
+python build_knowledge_base.py \
+  --market-data-dir ../quantify/market_data/ \
+  --output ./data/knowledge_base
+```
+
+### Adding New PDFs
+
+```bash
+cd knowledge_base
+python -c "
+from service import KnowledgeService
+kb = KnowledgeService()
+kb.add_pdfs(['../quantify/market_data/Investing_Books/new_book.pdf'])
+print(f'Total documents: {len(kb)}')
+"
+```
+
+### Knowledge Base Tests
+
+```bash
+# Run all knowledge base tests
+python -m pytest knowledge_base/tests/ -v -o addopts=""
+
+# Run end-to-end integration test
+python test_knowledge_integration.py --test all
+```
+
+See [knowledge_base/USAGE.md](knowledge_base/USAGE.md) for complete documentation.
+
 ## Development
 
 ```bash
@@ -242,7 +302,19 @@ mypy quantify/
 
 - Python 3.10+
 - Ollama (for local LLM) or API keys for cloud providers
-- PostgreSQL with pgvector (optional, for knowledge base)
+- Ollama with `mxbai-embed-large` model (for knowledge base embeddings)
+
+### Install Ollama and Models
+
+```bash
+# Install Ollama (macOS)
+brew install ollama
+
+# Pull required models
+ollama pull llama-3.2-3b      # Fast thinking model
+ollama pull qwen2.5:7b        # Deep thinking model (or any preferred)
+ollama pull mxbai-embed-large # Embeddings for knowledge base
+```
 
 ## License
 
