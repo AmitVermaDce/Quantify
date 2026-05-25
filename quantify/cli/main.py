@@ -486,12 +486,30 @@ def update_display(layout, spinner_text=None, stats_handler=None, start_time=Non
 
 def get_user_selections():
     """Get all user selections before starting the analysis display."""
-    # Compact welcome header
-    console.print("[bold green]╔═══════════════════════════════════════════════════════════╗[/bold green]")
-    console.print("[bold green]║[/bold green] [bold]TradingAgents CLI[/bold] - Multi-Agents LLM Trading Framework [bold green]║[/bold green]")
-    console.print("[bold green]║[/bold green] Analyst → Research → Trader → Risk → Portfolio        [bold green]║[/bold green]")
-    console.print("[bold green]╚═══════════════════════════════════════════════════════════╝[/bold green]")
+    # Display ASCII art welcome message
+    with open(Path(__file__).parent / "static" / "welcome.txt", "r", encoding="utf-8") as f:
+        welcome_ascii = f.read()
+
+    # Create welcome box content
+    welcome_content = f"{welcome_ascii}\n"
+    welcome_content += "[bold green]TradingAgents: Multi-Agents LLM Financial Trading Framework - CLI[/bold green]\n\n"
+    welcome_content += "[bold]Workflow Steps:[/bold]\n"
+    welcome_content += "I. Analyst Team → II. Research Team → III. Trader → IV. Risk Management → V. Portfolio Management\n\n"
+    welcome_content += (
+        "[dim]Built by [Tauric Research](https://github.com/TauricResearch)[/dim]"
+    )
+
+    # Create and center the welcome box
+    welcome_box = Panel(
+        welcome_content,
+        border_style="green",
+        padding=(1, 2),
+        title="Welcome to TradingAgents",
+        subtitle="Multi-Agents LLM Financial Trading Framework",
+    )
+    console.print(Align.center(welcome_box))
     console.print()
+    console.print()  # Add vertical space before announcements
 
     # Fetch and display announcements (silent on failure)
     announcements = fetch_announcements()
